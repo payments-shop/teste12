@@ -46,7 +46,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setupMasks();
     updateCartDisplay();
     initializeProgressiveFlow();
-    checkFormCompletion();
 
     // Configurar teclado numérico para campos específicos
     const numericFields = ['cpf', 'zipCode', 'phone'];
@@ -466,17 +465,26 @@ function checkFormCompletion() {
     const btn = document.getElementById('btnContinuePayment');
     if (!btn) return;
     
-    // O botão deve estar sempre ativo conforme solicitado
-    btn.disabled = false;
-    btn.style.opacity = "1";
-    btn.style.cursor = "pointer";
+    const email = document.getElementById('email');
+    const zipCode = document.getElementById('zipCode');
+    const firstName = document.getElementById('firstName');
+    const lastName = document.getElementById('lastName');
+    const phone = document.getElementById('phone');
+    const number = document.getElementById('number');
+    const cpf = document.getElementById('cpf');
     
-    // Define o texto do botão com base na etapa atual
-    if (currentStep === 3) {
-        btn.textContent = "Continuar para o Pagamento";
-    } else {
-        btn.textContent = "Continuar";
-    }
+    const isComplete = 
+        validateEmail(email.value) &&
+        validateZipCode(zipCode.value) &&
+        addressFilled &&
+        selectedShipping !== null &&
+        firstName.value.trim() !== '' &&
+        lastName.value.trim() !== '' &&
+        validatePhone(phone.value) &&
+        number.value.trim() !== '' &&
+        validateCPF(cpf.value);
+    
+    btn.disabled = !isComplete;
     
     // Mostra o botão se todos os campos anteriores estiverem preenchidos
     if (flowState.cpfValid && !document.getElementById('sectionButton').classList.contains('show')) {
@@ -560,7 +568,6 @@ function goToStep(step) {
         currentStep = 2;
         updateStepDisplay();
         updateProgress();
-        checkFormCompletion(); // Atualiza o texto do botão
         
         if (window.innerWidth < 768) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -571,7 +578,6 @@ function goToStep(step) {
         updateStepDisplay();
         updateProgress();
         updateShippingCost();
-        checkFormCompletion(); // Atualiza o texto do botão
         
         if (window.innerWidth < 768) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
