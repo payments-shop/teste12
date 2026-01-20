@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -92,7 +93,7 @@
                     </div>
 
                     <!-- Seção 2.2: CEP -->
-                    <div class="form-section hidden" id="sectionCep">
+                    <div class="form-section" id="sectionCep">
                         <h3 class="section-title">Entrega</h3>
                         <div class="form-group">
                             <label class="form-label" for="zipCode">CEP *</label>
@@ -223,6 +224,13 @@
                     <div class="button-group hidden" id="sectionButton">
                         <button type="submit" class="btn btn-primary btn-full" id="btnContinuePayment" disabled>
                             Prosseguir para o pagamento
+                        </button>
+                    </div>
+
+                    <!-- Botão Continuar Fictício (sempre visível) -->
+                    <div class="button-group" id="sectionContinueButton">
+                        <button type="button" class="btn btn-primary btn-full btn-continue-fictitious" id="btnContinueFictitious">
+                            Continuar
                         </button>
                     </div>
                 </form>
