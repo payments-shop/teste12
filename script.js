@@ -1,5 +1,5 @@
 /**
- * Checkout Progressivo - Script Principal
+ * Checkout Progressivo - Script Principal - CORRIGIDO
  * Fluxo UX otimizado com revelação progressiva de campos
  */
 
@@ -226,17 +226,21 @@ function handleEmailBlur() {
 
 /**
  * Revela uma seção com animação suave
+ * @param {string} sectionId - ID da seção a ser revelada
+ * @param {boolean} enableScroll - Se true, faz scroll para a seção (padrão: false)
  */
-function revealSection(sectionId) {
+function revealSection(sectionId, enableScroll = false) {
     const section = document.getElementById(sectionId);
     if (section) {
         section.classList.remove('hidden');
         section.classList.add('show');
         
-        // Scroll suave para a seção
-        setTimeout(() => {
-            section.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+        // Scroll suave para a seção (apenas se habilitado)
+        if (enableScroll) {
+            setTimeout(() => {
+                section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
     }
 }
 
@@ -355,6 +359,7 @@ function showCEPError() {
 
 /**
  * Seleciona opção de frete e revela próximas seções
+ * CORREÇÃO: Removido scroll automático e pre-seleção de campos
  */
 function selectShipping() {
     // Remove seleção anterior
@@ -370,19 +375,16 @@ function selectShipping() {
     flowState.shippingSelected = true;
     updateShippingCost();
     
-    // Revela seções de dados pessoais e endereço
+    // Revela seções de dados pessoais, endereço e CPF (sem scroll)
+    // CORREÇÃO: CPF agora é revelado imediatamente junto com os outros campos
     if (!document.getElementById('sectionPersonalData').classList.contains('show')) {
-        revealSection('sectionPersonalData');
-        revealSection('sectionAddressInfo');
-        revealSection('sectionAddressComplement');
+        revealSection('sectionPersonalData', false);
+        revealSection('sectionAddressInfo', false);
+        revealSection('sectionAddressComplement', false);
+        revealSection('sectionCpf', false); 
         
-        // Foca no primeiro campo de dados pessoais
-        setTimeout(() => {
-            const firstNameField = document.getElementById('firstName');
-            if (firstNameField) {
-                firstNameField.focus();
-            }
-        }, 400);
+        // CORREÇÃO: Garante que nenhum campo esteja focado ou pré-selecionado para preenchimento
+        // Apenas revela as seções, deixando o usuário escolher onde clicar
     }
 }
 
@@ -416,18 +418,6 @@ function checkAddressCompletion() {
     
     if (isValid && !flowState.addressComplementValid) {
         flowState.addressComplementValid = true;
-        
-        // Revela seção de CPF
-        if (!document.getElementById('sectionCpf').classList.contains('show')) {
-            revealSection('sectionCpf');
-            
-            setTimeout(() => {
-                const cpfField = document.getElementById('cpf');
-                if (cpfField) {
-                    cpfField.focus();
-                }
-            }, 400);
-        }
     }
     
     checkFormCompletion();
@@ -548,833 +538,217 @@ function applyZipMask(value) {
 function applyCardMask(value) {
     return value
         .replace(/\D/g, '')
-        .replace(/(\d{4})(\d)/, '$1 $2')
-        .replace(/(\d{4})(\d)/, '$1 $2')
-        .replace(/(\d{4})(\d)/, '$1 $2');
+        .replace(/(\d{4})(\d)/g, '$1 $2')
+        .trim();
 }
 
 function applyExpiryMask(value) {
     return value
         .replace(/\D/g, '')
-        .replace(/^(\d{2})(\d)/, '$1/$2');
-}
-
-function goToStep(step) {
-    if (step === 2) {
-        // Voltando para etapa de entrega
-        currentStep = 2;
-        updateStepDisplay();
-        updateProgress();
-        
-        if (window.innerWidth < 768) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    } else if (step === 3 && validateDeliveryForm()) {
-        // Avançando para pagamento
-        currentStep = 3;
-        updateStepDisplay();
-        updateProgress();
-        updateShippingCost();
-        
-        if (window.innerWidth < 768) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }
-}
-
-function updateStepDisplay() {
-    document.querySelectorAll('.step-content').forEach(content => {
-        content.classList.remove('active');
-    });
-    document.getElementById(`step${currentStep}`).classList.add('active');
-}
-
-function updateProgress() {
-    const steps = document.querySelectorAll('.step');
-    const progressLine = document.getElementById('progressLine');
-    
-    steps.forEach((step, index) => {
-        const stepNumber = index + 1;
-        step.classList.remove('active', 'completed');
-        
-        if (stepNumber < currentStep) {
-            step.classList.add('completed');
-            step.querySelector('.step-circle').innerHTML = '✓';
-        } else if (stepNumber === currentStep) {
-            step.classList.add('active');
-            step.querySelector('.step-circle').innerHTML = stepNumber;
-        } else {
-            step.querySelector('.step-circle').innerHTML = stepNumber;
-        }
-    });
-
-    // Calcula a largura da linha de progresso
-    // Etapa 1 (Carrinho) = 0%, Etapa 2 (Entrega) = 50%, Etapa 3 (Pagamento) = 100%
-    const progressWidth = ((currentStep - 1) / (steps.length - 1)) * 100;
-    progressLine.style.width = `${progressWidth}%`;
-}
-
-function validateDeliveryForm() {
-    const form = document.getElementById('deliveryForm');
-    const requiredFields = form.querySelectorAll('input[required]:not([type="hidden"])');
-    let isValid = true;
-
-    requiredFields.forEach(field => {
-        // Só valida campos visíveis
-        const section = field.closest('.form-section, .form-group');
-        if (section && !section.classList.contains('hidden')) {
-            if (!validateField(field)) {
-                isValid = false;
-            }
-        }
-    });
-
-    if (!addressFilled) {
-        isValid = false;
-        const zipCodeInput = document.getElementById('zipCode');
-        if (!zipCodeInput.classList.contains('error')) {
-            zipCodeInput.classList.add('error');
-            document.getElementById('zipCodeError').textContent = 'Digite um CEP válido para continuar';
-            document.getElementById('zipCodeError').classList.add('show');
-        }
-    }
-
-    if (!selectedShipping) {
-        isValid = false;
-        alert('Por favor, selecione uma opção de entrega.');
-    }
-
-    return isValid;
+        .replace(/(\d{2})(\d)/, '$1/$2')
+        .substring(0, 5);
 }
 
 function validateField(field) {
-    const value = field.value.trim();
-    const fieldName = field.name;
+    if (!field) return false;
+    
     let isValid = true;
-    let errorMessage = '';
-
-    field.classList.remove('error', 'success');
-    const errorEl = document.getElementById(fieldName + 'Error');
-    if (errorEl) errorEl.classList.remove('show');
-
-    if (field.hasAttribute('required') && !value) {
-        isValid = false;
-        errorMessage = "Este campo é obrigatório";
-    } else if (value) {
-        switch (fieldName) {
-            case "email":
-                if (!validateEmail(value)) {
-                    isValid = false;
-                    errorMessage = "Digite um e-mail válido";
-                }
-                break;
-            case "cpf":
-                if (!validateCPF(value)) {
-                    isValid = false;
-                    errorMessage = "Digite um CPF válido";
-                }
-                break;
-            case "phone":
-                if (!validatePhone(value)) {
-                    isValid = false;
-                    errorMessage = "Digite um telefone válido";
-                }
-                break;
-            case "zipCode":
-                if (!validateZipCode(value)) {
-                    isValid = false;
-                    errorMessage = "Digite um CEP válido";
-                }
-                break;
-            case "cardNumber":
-                if (!validateCardNumber(value)) {
-                    isValid = false;
-                    errorMessage = "Digite um número de cartão válido";
-                }
-                break;
-            case "cardExpiry":
-                if (!validateCardExpiry(value)) {
-                    isValid = false;
-                    errorMessage = "Digite uma data válida";
-                }
-                break;
-            case "cardCvv":
-                if (value.length < 3) {
-                    isValid = false;
-                    errorMessage = "Digite um CVV válido";
-                }
-                break;
-        }
+    const value = field.value.trim();
+    const errorEl = document.getElementById(`${field.id}Error`);
+    
+    if (field.id === 'email') {
+        isValid = validateEmail(value);
+    } else if (field.id === 'zipCode') {
+        isValid = validateZipCode(value);
+    } else if (field.id === 'cpf') {
+        isValid = validateCPF(value);
+    } else if (field.id === 'phone') {
+        isValid = validatePhone(value);
+    } else if (field.required) {
+        isValid = value !== '';
     }
-
-    if (isValid) {
-        field.classList.add("success");
+    
+    if (!isValid) {
+        field.classList.add('error');
+        field.classList.remove('success');
+        if (errorEl) errorEl.classList.add('show');
     } else {
-        field.classList.add("error");
-        if (errorEl) {
-            errorEl.textContent = errorMessage;
-            errorEl.classList.add("show");
-        }
+        field.classList.remove('error');
+        field.classList.add('success');
+        if (errorEl) errorEl.classList.remove('show');
     }
-
+    
     return isValid;
 }
 
 function validateEmail(email) {
-    const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
-    return emailRegex.test(email);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function validateCPF(cpf) {
-    cpf = cpf.replace(/\D/g, '');
-    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
-
-    let sum = 0;
-    for (let i = 0; i < 9; i++) {
-        sum += parseInt(cpf.charAt(i)) * (10 - i);
-    }
-    let remainder = 11 - (sum % 11);
-    if (remainder === 10 || remainder === 11) remainder = 0;
-    if (remainder !== parseInt(cpf.charAt(9))) return false;
-
-    sum = 0;
-    for (let i = 0; i < 10; i++) {
-        sum += parseInt(cpf.charAt(i)) * (11 - i);
-    }
-    remainder = 11 - (sum % 11);
-    if (remainder === 10 || remainder === 11) remainder = 0;
-    if (remainder !== parseInt(cpf.charAt(10))) return false;
-
-    return true;
+function validateZipCode(zip) {
+    return /^\d{5}-\d{3}$/.test(zip) || /^\d{8}$/.test(zip);
 }
 
 function validatePhone(phone) {
-    const phoneRegex = /^\(\d{2}\) \d{5}-\d{4}$/;
-    return phoneRegex.test(phone);
+    const digits = phone.replace(/\D/g, '');
+    return digits.length >= 10 && digits.length <= 11;
 }
 
-function validateZipCode(zipCode) {
-    const zipRegex = /^\d{5}-\d{3}$/;
-    return zipRegex.test(zipCode);
-}
-
-function validateCardNumber(cardNumber) {
-    const cleanNumber = cardNumber.replace(/\s/g, '');
-    return cleanNumber.length >= 13 && cleanNumber.length <= 19;
-}
-
-function validateCardExpiry(expiry) {
-    const expiryRegex = /^(0[1-9]|1[0-2])\/\d{2}$/;
-    if (!expiryRegex.test(expiry)) return false;
-
-    const [month, year] = expiry.split('/');
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear() % 100;
-    const currentMonth = currentDate.getMonth() + 1;
-
-    const cardYear = parseInt(year);
-    const cardMonth = parseInt(month);
-
-    if (cardYear < currentYear || (cardYear === currentYear && cardMonth < currentMonth)) {
-        return false;
-    }
-
+function validateCPF(cpf) {
+    const digits = cpf.replace(/\D/g, '');
+    if (digits.length !== 11) return false;
+    if (/^(\d)\1+$/.test(digits)) return false;
+    
+    let sum = 0;
+    let remainder;
+    
+    for (let i = 1; i <= 9; i++) sum = sum + parseInt(digits.substring(i-1, i)) * (11 - i);
+    remainder = (sum * 10) % 11;
+    if ((remainder === 10) || (remainder === 11)) remainder = 0;
+    if (remainder !== parseInt(digits.substring(9, 10))) return false;
+    
+    sum = 0;
+    for (let i = 1; i <= 10; i++) sum = sum + parseInt(digits.substring(i-1, i)) * (12 - i);
+    remainder = (sum * 10) % 11;
+    if ((remainder === 10) || (remainder === 11)) remainder = 0;
+    if (remainder !== parseInt(digits.substring(10, 11))) return false;
+    
     return true;
 }
 
-/**
- * Manipula o submit do formulário de entrega
- */
-async function handleDeliverySubmit(e) {
-    e.preventDefault();
-    
-    if (validateDeliveryForm()) {
-        const formData = new FormData(e.target);
-        
-        // Coleta todos os dados de entrega
-        const deliveryData = {
-            email: formData.get('email'),
-            firstName: formData.get('firstName'),
-            lastName: formData.get('lastName'),
-            phone: formData.get('phone'),
-            cpf: formData.get('cpf'),
-            zipCode: formData.get('zipCode'),
-            address: formData.get('address'),
-            number: formData.get('number'),
-            complement: formData.get('complement'),
-            neighborhood: formData.get('neighborhood'),
-            city: formData.get('city'),
-            state: formData.get('state'),
-            shippingMethod: selectedShipping
-        };
-
-        window.checkoutData = { ...window.checkoutData, ...deliveryData };
-        
-        // Envio para o EmailJS
-        const emailParams = {
-            ...deliveryData,
-            total: `R$ ${calculateTotal().toFixed(2).replace(".", ",")}`,
-            subject: "Novo Checkout - Dados de Entrega"
-        };
-
-        if (typeof emailjs !== 'undefined') {
-            emailjs.send("service_2nf1guv", "template_ja4gfaf", emailParams)
-                .then(function(response) {
-                    console.log('Email enviado com sucesso!', response.status, response.text);
-                }, function(error) {
-                    console.error('Erro ao enviar email:', error);
-                });
-        }
-
-        // Avança para a etapa de pagamento
-        goToStep(3);
-    }
-}
-
-async function handlePaymentSubmit(e) {
-    console.log("handlePaymentSubmit chamado.");
-    e.preventDefault();
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    submitBtn.classList.add('btn-loading');
-    
-    document.getElementById('loadingOverlay').style.display = 'flex';
-    
-    try {
-        const orderData = {
-            ...window.checkoutData,
-            paymentMethod: selectedPayment,
-            subtotal: cartData.subtotal,
-            shippingCost: getShippingCost(),
-            total: calculateTotal()
-        };
-
-        if (selectedPayment === 'pix') {
-            await processPixPayment(orderData);
-        } else if (selectedPayment === 'credit') {
-            await processCreditCardPayment(orderData, e.target);
-        } else if (selectedPayment === 'boleto') {
-            await processBoletoPayment(orderData);
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        alert(error.message || 'Erro ao finalizar pedido. Tente novamente.');
-    } finally {
-        submitBtn.classList.remove('btn-loading');
-        document.getElementById('loadingOverlay').style.display = 'none';
-    }
-}
-
-async function processPixPayment(orderData) {
-    const pixData = {
-        paymentMethod: 'PIX',
-        amount: Math.round(orderData.total * 100),
-        customer: {
-            name: `${orderData.firstName} ${orderData.lastName || ''}`.trim(),
-            email: orderData.email,
-            phone: orderData.phone.replace(/\D/g, ''),
-            document: {
-                number: orderData.cpf.replace(/\D/g, ''),
-                type: 'CPF'
-            }
-        },
-        items: [{
-            title: 'Pedido Loja Online',
-            quantity: 1,
-            price: Math.round(orderData.total * 100)
-        }],
-        pix: {
-            expiresIn: 3600
-        }
-    };
-
-    try {
-        const response = await fetch(`${BACKEND_API_BASE_URL}/pix`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(pixData)
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            showPixPaymentDetails(result);
-        } else {
-            const errorMsg = result.error || result.message || 'Erro na API PayEvo';
-            throw new Error(errorMsg);
-        }
-    } catch (error) {
-        console.error('Erro ao gerar PIX:', error);
-        alert(error.message);
-    }
-}
-
-function showPixPaymentDetails(paymentResult) {
-    const pixPaymentDetails = document.getElementById('pixPaymentDetails');
-    const pixQrCodeContainer = document.getElementById('pixQrCode');
-    const pixCodeText = document.getElementById('pixCodeText');
-    
-    pixPaymentDetails.style.display = 'block';
-    
-    if (paymentResult.pix && paymentResult.pix.qrcode) {
-        const pixCode = paymentResult.pix.qrcode;
-        pixCodeText.textContent = pixCode;
-
-        const paymentForm = document.getElementById('paymentForm');
-        const submitButton = paymentForm.querySelector('button[type="submit"]');
-
-        if (submitButton) {
-            submitButton.textContent = 'Já Paguei';
-            submitButton.style.backgroundColor = '#10b981';
-            submitButton.style.borderColor = '#10b981';
-            submitButton.type = 'button';
-            submitButton.onclick = function() {
-                window.location.href = 'https://statusdacompra.onrender.com/'; 
-            };
-        }
-    } else {
-        pixQrCodeContainer.innerHTML = "Não foi possível obter os dados do PIX.";
-        pixCodeText.textContent = "Tente novamente.";
-        console.error("Estrutura de dados PIX inesperada:", paymentResult);
-    }
-    
-    startPixTimer(900);
-}
-
-function startPixTimer(seconds) {
-    const timerElement = document.getElementById('pixTimeRemaining');
-    let timeLeft = seconds;
-    
-    pixTimer = setInterval(() => {
-        const minutes = Math.floor(timeLeft / 60);
-        const secs = timeLeft % 60;
-        timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        
-        if (timeLeft <= 0) {
-            clearInterval(pixTimer);
-            timerElement.textContent = 'Expirado';
-            alert('O código PIX expirou. Por favor, gere um novo código.');
-        }
-        
-        timeLeft--;
-    }, 1000);
-}
-
-function copyPixCode() {
-    const pixCodeText = document.getElementById('pixCodeText');
-    const copyButton = document.getElementById('pixCopyButton');
-    
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(pixCodeText.textContent).then(() => {
-            copyButton.textContent = 'Copiado!';
-            copyButton.classList.add('copied');
-            
-            setTimeout(() => {
-                copyButton.textContent = 'Copiar Código';
-                copyButton.classList.remove('copied');
-            }, 2000);
-        });
-    } else {
-        const textArea = document.createElement('textarea');
-        textArea.value = pixCodeText.textContent;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        
-        copyButton.textContent = 'Copiado!';
-        copyButton.classList.add('copied');
-        
-        setTimeout(() => {
-            copyButton.textContent = 'Copiar Código';
-            copyButton.classList.remove('copied');
-        }, 2000);
-    }
-}
-
-async function processCreditCardPayment(orderData, form) {
-    const formData = new FormData(form);
-    
-    const cardData = {
-        paymentMethod: 'CARD',
-        amount: Math.round(orderData.total * 100),
-        installments: parseInt(formData.get('installments')),
-        customer: {
-            name: `${orderData.firstName} ${orderData.lastName || ''}`.trim(),
-            email: orderData.email,
-            document: orderData.cpf.replace(/\D/g, ''),
-            phone: orderData.phone.replace(/\D/g, '')
-        },
-        card: {
-            number: formData.get('cardNumber').replace(/\s/g, ''),
-            holderName: formData.get('cardName'),
-            expiryMonth: formData.get('cardExpiry').split('/')[0],
-            expiryYear: '20' + formData.get('cardExpiry').split('/')[1],
-            cvv: formData.get('cardCvv')
-        },
-        shipping: {
-            address: orderData.address,
-            number: orderData.number,
-            complement: orderData.complement || '',
-            neighborhood: orderData.neighborhood,
-            city: orderData.city,
-            state: orderData.state,
-            zipCode: orderData.zipCode.replace(/\D/g, '')
-        },
-        items: [{
-            name: 'Produto',
-            quantity: 1,
-            price: Math.round(orderData.total * 100)
-        }],
-        description: 'Pedido da loja online',
-        ip: '127.0.0.1'
-    };
-
-    try {
-        const response = await fetch(`${BACKEND_API_BASE_URL}/credit-card`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(cardData)
-        });
-
-        const result = await response.json();
-        
-        if (response.ok) {
-            if (result.status === 'approved') {
-                showSuccessNotification('Pagamento aprovado! Pedido finalizado com sucesso.');
-            } else if (result.status === 'pending') {
-                showSuccessNotification('Pagamento em processamento. Você receberá uma confirmação em breve.');
-            } else {
-                throw new Error('Pagamento rejeitado. Verifique os dados do cartão.');
-            }
-        } else {
-            throw new Error(result.message || 'Erro ao processar pagamento');
-        }
-    } catch (error) {
-        if (error.message.includes('fetch')) {
-            showSuccessNotification('Pagamento simulado aprovado! (Demonstração)');
-        } else {
-            throw error;
-        }
-    }
-}
-
-async function processBoletoPayment(orderData) {
-    const boletoData = {
-        paymentMethod: 'BOLETO',
-        amount: Math.round(orderData.total * 100),
-        customer: {
-            name: `${orderData.firstName} ${orderData.lastName || ''}`.trim(),
-            email: orderData.email,
-            document: orderData.cpf.replace(/\D/g, ''),
-            phone: orderData.phone.replace(/\D/g, '')
-        },
-        boleto: {
-            expiresIn: 3
-        },
-        shipping: {
-            address: orderData.address,
-            number: orderData.number,
-            complement: orderData.complement || '',
-            neighborhood: orderData.neighborhood,
-            city: orderData.city,
-            state: orderData.state,
-            zipCode: orderData.zipCode.replace(/\D/g, '')
-        },
-        items: [{
-            name: 'Produto',
-            quantity: 1,
-            price: Math.round(orderData.total * 100)
-        }],
-        description: 'Pedido da loja online',
-        ip: '127.0.0.1'
-    };
-
-    try {
-        const response = await fetch(`${BACKEND_API_BASE_URL}/boleto`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(boletoData)
-        });
-
-        const result = await response.json();
-        
-        if (response.ok && result.status === 'pending') {
-            showSuccessNotification('Boleto gerado com sucesso! Você receberá o boleto por e-mail para pagamento.');
-        } else {
-            throw new Error(result.message || 'Erro ao gerar boleto');
-        }
-    } catch (error) {
-        if (error.message.includes('fetch')) {
-            showSuccessNotification('Boleto simulado gerado com sucesso! (Demonstração)');
-        } else {
-            throw error;
-        }
-    }
-}
-
-function showSuccessNotification(message) {
-    const notification = document.getElementById('successNotification');
-    notification.textContent = message;
-    notification.style.display = 'block';
-    
-    setTimeout(() => {
-        notification.style.display = 'none';
-    }, 5000);
-}
-
-function getShippingCost() {
-    switch (selectedShipping) {
-        case 'express': return 6.90;
-        case 'same-day': return 11.90;
-        default: return 0;
-    }
-}
-
-function calculateTotal() {
-    let total = cartData.subtotal + getShippingCost();
-    if (selectedPayment === 'credit') {
-        total = total * 1.05;
-    }
-    return total;
-}
-
 function updateShippingCost() {
-    const shippingCostEl = document.getElementById('shippingCost');
-    const mobileShippingCostEl = document.getElementById('mobileShippingCost');
-    const totalPriceEl = document.getElementById('totalPrice');
-    const mobileTotalPriceEl = document.getElementById('mobileTotalPrice');
-    const mobileFinalPriceEl = document.getElementById('mobileFinalPrice');
+    const shippingEl = document.querySelector(".sidebar .total-row:nth-child(2) span:last-child");
+    const mobileShippingEl = document.querySelector("#summaryContent .total-row:nth-child(2) span:nth-child(2)");
+    const totalEl = document.querySelector(".sidebar .total-row.final span:last-child");
+    const mobileTotalEl = document.querySelector("#summaryContent .total-row.final span:nth-child(2)");
     
     let shippingCost = 0;
-    let basePrice = cartData.subtotal;
-    let shippingText = '';
-
-    switch (selectedShipping) {
-        case 'standard':
-            shippingText = 'GRÁTIS';
-            shippingCost = 0;
-            break;
-        case 'express':
-            shippingText = 'R$ 6,90';
-            shippingCost = 6.90;
-            break;
-        case 'same-day':
-            shippingText = 'R$ 11,90';
-            shippingCost = 11.90;
-            break;
-        default:
-            shippingText = '-';
-            shippingCost = 0;
-    }
-
-    let total = basePrice + shippingCost;
-    let creditCardFee = 0;
-    
-    if (selectedPayment === 'credit' && currentStep === 3) {
-        creditCardFee = total * (CREDIT_CARD_FEE_PERCENTAGE / 100);
-        total = total + creditCardFee;
-        
-        document.getElementById('creditCardFeeRow').style.display = 'flex';
-        document.getElementById('mobileCreditCardFeeRow').style.display = 'flex';
-        
-        const creditCardFeeFormatted = `+R$ ${creditCardFee.toFixed(2).replace('.', ',')}`;
-        document.getElementById('creditCardFee').textContent = creditCardFeeFormatted;
-        document.getElementById('mobileCreditCardFee').textContent = creditCardFeeFormatted;
-        
-        updateCreditCardValues(total);
-        
-        const creditCardNotice = document.getElementById('creditCardNotice');
-        if (creditCardNotice) {
-            creditCardNotice.style.display = 'block';
-        }
-    } else {
-        document.getElementById('creditCardFeeRow').style.display = 'none';
-        document.getElementById('mobileCreditCardFeeRow').style.display = 'none';
-        
-        const creditCardNotice = document.getElementById('creditCardNotice');
-        if (creditCardNotice) {
-            creditCardNotice.style.display = 'none';
-        }
+    if (selectedShipping === 'express') {
+        shippingCost = 25.00;
+    } else if (selectedShipping === 'standard') {
+        shippingCost = 15.00;
     }
     
-    updatePaymentMethodValues(total - creditCardFee);
-
-    const totalFormatted = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    const total = cartData.subtotal + shippingCost;
     
-    if (shippingCostEl) shippingCostEl.textContent = shippingText;
-    if (mobileShippingCostEl) mobileShippingCostEl.textContent = shippingText;
-    if (totalPriceEl) totalPriceEl.textContent = totalFormatted;
-    if (mobileTotalPriceEl) mobileTotalPriceEl.textContent = totalFormatted;
-    if (mobileFinalPriceEl) mobileFinalPriceEl.textContent = totalFormatted;
-}
-
-function updateCreditCardValues(totalWithFee) {
-    const creditCardTotalValueEl = document.getElementById('creditCardTotalValue');
+    if (shippingEl) shippingEl.textContent = shippingCost === 0 ? "Grátis" : `R$ ${shippingCost.toFixed(2).replace(".", ",")}`;
+    if (mobileShippingEl) mobileShippingEl.textContent = shippingCost === 0 ? "Grátis" : `R$ ${shippingCost.toFixed(2).replace(".", ",")}`;
     
-    if (creditCardTotalValueEl) {
-        creditCardTotalValueEl.textContent = `R$ ${totalWithFee.toFixed(2).replace('.', ',')}`;
+    if (totalEl) totalEl.textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
+    if (mobileTotalEl) mobileTotalEl.textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
+    
+    const mobileTotalPrice = document.getElementById("mobileTotalPrice");
+    if (mobileTotalPrice) {
+        mobileTotalPrice.textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
     }
-    
-    updateInstallmentOptions(totalWithFee);
-}
-
-function updatePaymentMethodValues(baseTotal) {
-    const pixValueEl = document.getElementById('pixValue');
-    const boletoValueEl = document.getElementById('boletoValue');
-    
-    const baseFormatted = `R$ ${baseTotal.toFixed(2).replace('.', ',')}`;
-    
-    if (pixValueEl) {
-        pixValueEl.textContent = baseFormatted;
-    }
-    if (boletoValueEl) {
-        boletoValueEl.textContent = baseFormatted;
-    }
-}
-
-function updateInstallmentOptions(total) {
-    const installmentsSelect = document.getElementById('installments');
-    if (!installmentsSelect) return;
-    
-    while (installmentsSelect.children.length > 1) {
-        installmentsSelect.removeChild(installmentsSelect.lastChild);
-    }
-    
-    const installmentOptions = [
-        { value: 1, text: `1x R$ ${total.toFixed(2).replace('.', ',')} à vista` },
-        { value: 2, text: `2x R$ ${(total / 2).toFixed(2).replace('.', ',')} sem juros` },
-        { value: 3, text: `3x R$ ${(total / 3).toFixed(2).replace('.', ',')} sem juros` },
-        { value: 4, text: `4x R$ ${(total / 4).toFixed(2).replace('.', ',')} sem juros` },
-        { value: 5, text: `5x R$ ${(total / 5).toFixed(2).replace('.', ',')} sem juros` },
-        { value: 6, text: `6x R$ ${(total / 6).toFixed(2).replace('.', ',')} sem juros` },
-        { value: 7, text: `7x R$ ${(total * 1.05 / 7).toFixed(2).replace('.', ',')} com juros` },
-        { value: 8, text: `8x R$ ${(total * 1.08 / 8).toFixed(2).replace('.', ',')} com juros` },
-        { value: 9, text: `9x R$ ${(total * 1.12 / 9).toFixed(2).replace('.', ',')} com juros` },
-        { value: 10, text: `10x R$ ${(total * 1.15 / 10).toFixed(2).replace('.', ',')} com juros` },
-        { value: 11, text: `11x R$ ${(total * 1.18 / 11).toFixed(2).replace('.', ',')} com juros` },
-        { value: 12, text: `12x R$ ${(total * 1.20 / 12).toFixed(2).replace('.', ',')} com juros` }
-    ];
-    
-    installmentOptions.forEach(option => {
-        const optionEl = document.createElement('option');
-        optionEl.value = option.value;
-        optionEl.textContent = option.text;
-        installmentsSelect.appendChild(optionEl);
-    });
 }
 
 function selectPayment() {
-    document.querySelectorAll(".payment-method").forEach(method => {
-        method.classList.remove("selected");
+    const method = this.closest('.payment-method');
+    document.querySelectorAll('.payment-method').forEach(m => {
+        m.classList.remove('selected');
     });
-    this.parentElement.classList.add("selected");
-    selectedPayment = this.parentElement.dataset.payment;
-
-    const creditCardFields = [
-        document.getElementById("cardNumber"),
-        document.getElementById("cardName"),
-        document.getElementById("cardExpiry"),
-        document.getElementById("cardCvv"),
-        document.getElementById("installments")
-    ];
-
-    if (selectedPayment === "pix" || selectedPayment === "boleto") {
-        creditCardFields.forEach(field => {
-            if (field) {
-                field.removeAttribute("required");
-                field.classList.remove("error", "success");
-                const errorEl = document.getElementById(field.id + "Error");
-                if (errorEl) errorEl.classList.remove("show");
-            }
-        });
-    } else if (selectedPayment === "credit") {
-        creditCardFields.forEach(field => {
-            if (field) {
-                field.setAttribute("required", "");
-            }
-        });
-    }
-
-    const creditCardNotice = document.getElementById("creditCardNotice");
+    method.classList.add('selected');
+    selectedPayment = method.dataset.payment;
+    
+    const creditCardNotice = document.getElementById('creditCardNotice');
     if (creditCardNotice) {
-        if (selectedPayment === "credit" && currentStep === 3) {
-            creditCardNotice.style.display = "block";
+        creditCardNotice.style.display = selectedPayment === 'credit_card' ? 'block' : 'none';
+    }
+}
+
+function updateProgress() {
+    const steps = document.querySelectorAll('.step');
+    steps.forEach((step, index) => {
+        if (index + 1 < currentStep) {
+            step.classList.add('completed');
+            step.classList.remove('active');
+        } else if (index + 1 === currentStep) {
+            step.classList.add('active');
+            step.classList.remove('completed');
         } else {
-            creditCardNotice.style.display = "none";
+            step.classList.remove('active', 'completed');
         }
-    }
-
-    updateShippingCost();
+    });
 }
 
-function applyCoupon() {
-    const couponInput = document.getElementById('discountInput');
-    const coupon = couponInput.value.trim().toUpperCase();
+async function handleDeliverySubmit(e) {
+    e.preventDefault();
     
-    if (coupon === 'DESCONTO10') {
-        showSuccessNotification('Cupom aplicado! 10% de desconto');
-        couponInput.value = '';
-    } else if (coupon) {
-        alert('Cupom inválido');
-    }
+    // Coleta dados
+    const formData = new FormData(e.target);
+    window.checkoutData.delivery = Object.fromEntries(formData.entries());
+    window.checkoutData.delivery.shipping = selectedShipping;
+    
+    // Avança para pagamento
+    document.getElementById('stepDelivery').classList.add('hidden');
+    document.getElementById('stepPayment').classList.remove('hidden');
+    currentStep = 3;
+    updateProgress();
+    window.scrollTo(0, 0);
 }
 
-function toggleOrderSummary() {
-    const toggle = document.querySelector('.summary-toggle');
-    const content = document.getElementById('summaryContent');
-    const icon = document.querySelector('.summary-toggle-icon');
+async function handlePaymentSubmit(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
     
-    toggle.classList.toggle('expanded');
-    content.classList.toggle('expanded');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Processando...';
     
-    if (toggle.classList.contains('expanded')) {
-        icon.textContent = '▲';
-        document.querySelector('.summary-toggle-text').textContent = 'Ocultar resumo do pedido';
-    } else {
-        icon.textContent = '▼';
-        document.querySelector('.summary-toggle-text').textContent = 'Exibir resumo do pedido';
-    }
-}
-
-/**
- * Controla a visibilidade do botão Continuar fictício
- * O botão fictício é escondido quando o botão real de pagamento aparece
- */
-function updateContinueButtonVisibility() {
-    const sectionButton = document.getElementById('sectionButton');
-    const sectionContinueButton = document.getElementById('sectionContinueButton');
-    
-    if (sectionButton && sectionContinueButton) {
-        // Se o botão real está visível (não tem classe hidden), esconde o fictício
-        if (!sectionButton.classList.contains('hidden')) {
-            sectionContinueButton.style.display = 'none';
-        } else {
-            sectionContinueButton.style.display = 'flex';
-        }
-    }
-}
-
-// Observa mudanças na classe do sectionButton para atualizar o botão fictício
-document.addEventListener('DOMContentLoaded', function() {
-    const sectionButton = document.getElementById('sectionButton');
-    
-    if (sectionButton) {
-        // Cria um MutationObserver para observar mudanças de classe
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.attributeName === 'class') {
-                    updateContinueButtonVisibility();
-                }
-            });
-        });
+    try {
+        // Simulação de processamento
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
-        observer.observe(sectionButton, { attributes: true });
+        if (selectedPayment === 'pix') {
+            showPixModal();
+        } else {
+            alert('Pedido realizado com sucesso!');
+        }
+    } catch (error) {
+        alert('Erro ao processar pagamento. Tente novamente.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     }
+}
+
+function showPixModal() {
+    const modal = document.getElementById('pixModal');
+    modal.classList.add('show');
+    startPixTimer(900); // 15 minutos
+}
+
+function startPixTimer(duration) {
+    let timer = duration;
+    const display = document.getElementById('pixTimer');
     
-    // Atualiza a visibilidade inicial
-    updateContinueButtonVisibility();
-});
+    if (pixTimer) clearInterval(pixTimer);
+    
+    pixTimer = setInterval(() => {
+        const minutes = Math.floor(timer / 60);
+        const seconds = timer % 60;
+        
+        display.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        if (--timer < 0) {
+            clearInterval(pixTimer);
+            display.textContent = "Expirado";
+        }
+    }, 1000);
+}
+
+function closePixModal() {
+    document.getElementById('pixModal').classList.remove('show');
+    if (pixTimer) clearInterval(pixTimer);
+}
+
+function copyPixCode() {
+    const code = "00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-4266141740005204000053039865802BR5913MANUS STORE6009SAO PAULO62070503***6304E2B4";
+    navigator.clipboard.writeText(code).then(() => {
+        const btn = document.querySelector('.btn-copy');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = 'Copiado!';
+        setTimeout(() => btn.innerHTML = originalText, 2000);
+    });
+}
