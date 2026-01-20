@@ -382,6 +382,7 @@ function selectShipping() {
         revealSection('sectionAddressInfo', false);
         revealSection('sectionAddressComplement', false);
         revealSection('sectionCpf', false); 
+        revealSection('sectionButton', false); // Botão agora aparece junto com os campos
         
         // CORREÇÃO: Garante que nenhum campo esteja focado ou pré-selecionado para preenchimento
         // Apenas revela as seções, deixando o usuário escolher onde clicar
@@ -463,7 +464,6 @@ function checkFormCompletion() {
     const isComplete = 
         validateEmail(email.value) &&
         validateZipCode(zipCode.value) &&
-        addressFilled &&
         selectedShipping !== null &&
         firstName.value.trim() !== '' &&
         lastName.value.trim() !== '' &&
@@ -473,9 +473,9 @@ function checkFormCompletion() {
     
     btn.disabled = !isComplete;
     
-    // Mostra o botão se todos os campos anteriores estiverem preenchidos
-    if (flowState.cpfValid && !document.getElementById('sectionButton').classList.contains('show')) {
-        revealSection('sectionButton');
+    // Garante que a seção do botão esteja visível se o frete foi selecionado
+    if (selectedShipping !== null && !document.getElementById('sectionButton').classList.contains('show')) {
+        revealSection('sectionButton', false);
     }
 }
 
