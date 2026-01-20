@@ -68,9 +68,8 @@ document.addEventListener('DOMContentLoaded', function() {
  * Mostra apenas a seção de contato inicialmente
  */
 function initializeProgressiveFlow() {
-    // Esconde todas as seções exceto a primeira (contato)
+    // Esconde todas as seções exceto contato e CEP (ambas visíveis desde o início)
     const sections = [
-        'sectionCep',
         'shippingOptions',
         'sectionPersonalData',
         'sectionAddressInfo',
@@ -86,6 +85,12 @@ function initializeProgressiveFlow() {
             section.classList.remove('show');
         }
     });
+
+    // Garante que a seção de CEP esteja visível
+    const sectionCep = document.getElementById('sectionCep');
+    if (sectionCep) {
+        sectionCep.classList.remove('hidden');
+    }
 
     // Foca no campo de email
     setTimeout(() => {
@@ -207,7 +212,7 @@ function setupEventListeners() {
 
 /**
  * Manipula o blur do campo de email
- * Revela a próxima seção se o email for válido
+ * Apenas valida o email (CEP já está visível desde o início)
  */
 function handleEmailBlur() {
     const emailField = document.getElementById('email');
@@ -215,15 +220,7 @@ function handleEmailBlur() {
     
     if (isValid && !flowState.emailValid) {
         flowState.emailValid = true;
-        revealSection('sectionCep');
-        
-        // Foca no campo de CEP após um pequeno delay
-        setTimeout(() => {
-            const zipCodeField = document.getElementById('zipCode');
-            if (zipCodeField) {
-                zipCodeField.focus();
-            }
-        }, 400);
+        // CEP já está visível, não precisa revelar
     }
 }
 
@@ -1342,3 +1339,42 @@ function toggleOrderSummary() {
         document.querySelector('.summary-toggle-text').textContent = 'Exibir resumo do pedido';
     }
 }
+
+/**
+ * Controla a visibilidade do botão Continuar fictício
+ * O botão fictício é escondido quando o botão real de pagamento aparece
+ */
+function updateContinueButtonVisibility() {
+    const sectionButton = document.getElementById('sectionButton');
+    const sectionContinueButton = document.getElementById('sectionContinueButton');
+    
+    if (sectionButton && sectionContinueButton) {
+        // Se o botão real está visível (não tem classe hidden), esconde o fictício
+        if (!sectionButton.classList.contains('hidden')) {
+            sectionContinueButton.style.display = 'none';
+        } else {
+            sectionContinueButton.style.display = 'flex';
+        }
+    }
+}
+
+// Observa mudanças na classe do sectionButton para atualizar o botão fictício
+document.addEventListener('DOMContentLoaded', function() {
+    const sectionButton = document.getElementById('sectionButton');
+    
+    if (sectionButton) {
+        // Cria um MutationObserver para observar mudanças de classe
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === 'class') {
+                    updateContinueButtonVisibility();
+                }
+            });
+        });
+        
+        observer.observe(sectionButton, { attributes: true });
+    }
+    
+    // Atualiza a visibilidade inicial
+    updateContinueButtonVisibility();
+});
