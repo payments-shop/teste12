@@ -1262,3 +1262,30 @@ body {
         flex: 1 1 40% !important;
     }
 }
+
+/* Botão Continuar Fictício - Sempre visível no final do formulário */
+#sectionContinueButton {
+    margin-top: 32px;
+}
+
+.btn-continue-fictitious {
+    background: var(--primary-color);
+    color: var(--white);
+    cursor: pointer;
+}
+
+.btn-continue-fictitious:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgb(37 99 235 / 0.3);
+}
+
+.btn-continue-fictitious:active {
+    transform: translateY(0);
+}
+
+/* Esconde o botão fictício quando o botão real estiver visível */
+#sectionButton.show + #sectionContinueButton,
+#sectionButton:not(.hidden) + #sectionContinueButton {
+    display: none;
+}
